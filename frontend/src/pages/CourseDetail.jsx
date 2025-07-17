@@ -4,12 +4,14 @@ import { useSelector, useDispatch } from "react-redux";
 import DOMPurify from "dompurify";
 import { deleteCourse } from "../redux/coursesSlice";
 import axios from "../utils/axiosInstance";
+import Quiz from "../components/Quiz";
 
 function CourseDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [course, setCourse] = useState(null);
+  const [loading, setLoading] = useState(true);
   const courses = useSelector((state) => state.courses.list);
   const role = localStorage.getItem("role");
 
@@ -17,12 +19,30 @@ function CourseDetail() {
   const [completed, setCompleted] = useState({});
   // Section expand/collapse
   const [openSections, setOpenSections] = useState([]);
+  const [openQuiz, setOpenQuiz] = useState(null);
 
-  // Load progress from localStorage
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("progress") || "{}");
-    if (course?._id) setCompleted(saved[course._id] || {});
-  }, [course?._id]);
+    const found = courses.find((c) => String(c._id) === String(id));
+    if (found) {
+      setCourse({ ...found });
+      setLoading(false);
+    } else {
+      axios.get(`/courses/${id}`)
+        .then(res => {
+          setCourse(res.data);
+        })
+        .catch(() => {
+          setCourse(null);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
+  }, [id, courses]);
+
+  const totalLessons = course && course.sections ? course.sections.reduce((sum, sec) => sum + sec.lessons.length, 0) : 0;
+  const completedCount = Object.values(completed).filter(Boolean).length;
+  const progress = totalLessons ? Math.round((completedCount / totalLessons) * 100) : 0;
 
   // Save progress to localStorage
   useEffect(() => {
@@ -30,40 +50,15 @@ function CourseDetail() {
     const saved = JSON.parse(localStorage.getItem("progress") || "{}");
     saved[course._id] = completed;
     localStorage.setItem("progress", JSON.stringify(saved));
-  }, [completed, course?._id]);
 
-  useEffect(() => {
-    const found = courses.find((c) => String(c._id) === String(id));
-    if (found) {
-      setCourse(found);
-    } else {
-      // Fetch from backend if not found
-      axios.get(`/courses/${id}`).then(res => setCourse(res.data)).catch(() => setCourse(null));
+    // Check if course is completed and save to completedCourses
+    if (progress === 100 && totalLessons > 0) {
+      const completedCourses = JSON.parse(localStorage.getItem("completedCourses") || "[]");
+      if (!completedCourses.includes(course._id)) {
+        localStorage.setItem("completedCourses", JSON.stringify([...completedCourses, course._id]));
+      }
     }
-  }, [id, courses]);
-
-  if (!course) return <div className="p-4">Course not found.</div>;
-
-  // Toggle lesson completion
-  const toggleLesson = (secIdx, lesIdx) => {
-    const key = `${secIdx}-${lesIdx}`;
-    setCompleted((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
-  };
-
-  // Progress calculation
-  const totalLessons = course.sections.reduce((sum, sec) => sum + sec.lessons.length, 0);
-  const completedCount = Object.values(completed).filter(Boolean).length;
-  const progress = totalLessons ? Math.round((completedCount / totalLessons) * 100) : 0;
-
-  // Section expand/collapse
-  const toggleSection = (idx) => {
-    setOpenSections((prev) =>
-      prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]
-    );
-  };
+  }, [completed, course?._id, progress, totalLessons]);
 
   // Delete course
   const handleDelete = async () => {
@@ -78,32 +73,69 @@ function CourseDetail() {
     }
   };
 
+  // Find the next uncompleted lesson
+  const findNextLesson = () => {
+    if (!course || !course.sections) return null;
+    for (let secIdx = 0; secIdx < course.sections.length; secIdx++) {
+      const section = course.sections[secIdx];
+      for (let lesIdx = 0; lesIdx < section.lessons.length; lesIdx++) {
+        const key = `${secIdx}-${lesIdx}`;
+        if (!completed[key]) {
+          return { sectionIndex: secIdx, lessonIndex: lesIdx, lesson: section.lessons[lesIdx] };
+        }
+      }
+    }
+    return null; // All lessons completed
+  };
+
+  
+
+  
+
+  const toggleSection = (index) => {
+    setOpenSections((prevOpenSections) =>
+      prevOpenSections.includes(index)
+        ? prevOpenSections.filter((i) => i !== index)
+        : [...prevOpenSections, index]
+    );
+  };
+
+  const toggleLesson = (sectionIndex, lessonIndex) => {
+    const key = `${sectionIndex}-${lessonIndex}`;
+    setCompleted((prevCompleted) => ({
+      ...prevCompleted,
+      [key]: !prevCompleted[key],
+    }));
+  };
+
+  const nextLesson = findNextLesson();
+
   return (
     <div className="max-w-3xl mx-auto p-6 bg-white rounded shadow">
       {/* Header */}
       <div className="flex flex-col md:flex-row gap-6 mb-6">
         <img
-          src={course.thumbnail || "https://via.placeholder.com/300x200?text=No+Image"}
-          alt={course.title}
+          src={course?.thumbnail || "https://via.placeholder.com/300x200?text=No+Image"}
+          alt={course?.title}
           className="w-full md:w-64 h-40 object-cover rounded"
         />
         <div className="flex-1">
-          <h1 className="text-2xl font-bold mb-2">{course.title}</h1>
+          <h1 className="text-2xl font-bold mb-2">{course?.title}</h1>
           <div className="mb-2 text-gray-700" dangerouslySetInnerHTML={{
-            __html: DOMPurify.sanitize(course.description)
+            __html: DOMPurify.sanitize(course?.description || "")
           }} />
           <div className="flex gap-2 mb-2">
-            <span className="bg-gray-200 text-xs px-2 py-1 rounded">{course.category}</span>
-            <span className="bg-gray-100 text-xs px-2 py-1 rounded">{course.difficulty}</span>
+            <span className="bg-gray-200 text-xs px-2 py-1 rounded">{course?.category}</span>
+            <span className="bg-gray-100 text-xs px-2 py-1 rounded">{course?.difficulty}</span>
             <span className="bg-blue-100 text-xs px-2 py-1 rounded">
-              {course.sections.length} sections
+              {course?.sections?.length} sections
             </span>
           </div>
           <div className="flex gap-3 mt-2">
             {role === "admin" && (
               <>
                 <Link
-                  to={`/edit/${course._id}`}
+                  to={`/edit/${course?._id}`}
                   className="text-yellow-600 hover:underline"
                 >
                   ✏️ Edit
@@ -122,27 +154,29 @@ function CourseDetail() {
 
       {/* Progress */}
       <div className="mb-6">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold">Progress:</span>
-          <div className="w-40 h-3 bg-gray-200 rounded">
-            <div
-              className="h-3 bg-blue-500 rounded"
-              style={{ width: `${progress}%` }}
-            />
+        <h2 className="text-lg font-semibold mb-2">Progress: {progress}%</h2>
+        <div className="w-full bg-gray-200 rounded-full h-2.5">
+          <div
+            className="bg-blue-600 h-2.5 rounded-full"
+            style={{ width: `${progress}%` }}
+          ></div>
+        </div>
+        {nextLesson && (
+          <div className="mt-2 text-sm text-gray-600">
+            Next up:{" "}
+            <a href={`#lesson-${nextLesson.sectionIndex}-${nextLesson.lessonIndex}`} className="text-blue-600 underline">
+              {nextLesson.lesson.title}
+            </a>
           </div>
-          <span className="text-sm">{progress}%</span>
-        </div>
-        <div className="text-xs text-gray-500 mt-1">
-          {completedCount} of {totalLessons} lessons completed
-        </div>
+        )}
       </div>
 
-      {/* Sections & Lessons */}
-      <div>
-        {course.sections.map((section, secIdx) => (
-          <div key={secIdx} className="mb-4 border rounded">
+      {/* Sections */}
+      <div className="space-y-4">
+        {course?.sections?.map((section, secIdx) => (
+          <div key={secIdx} className="border rounded">
             <button
-              className="w-full text-left px-4 py-2 bg-gray-100 font-semibold flex justify-between items-center"
+              className="w-full text-left p-4 font-semibold flex justify-between items-center"
               onClick={() => toggleSection(secIdx)}
             >
               <span>{section.title || `Section ${secIdx + 1}`}</span>
@@ -154,7 +188,7 @@ function CourseDetail() {
                 {section.lessons.map((lesson, lesIdx) => {
                   const key = `${secIdx}-${lesIdx}`;
                   return (
-                    <div key={lesIdx} className="mb-4 border-b pb-3">
+                    <div key={lesIdx} id={`lesson-${secIdx}-${lesIdx}`} className="mb-4 border-b pb-3">
                       <div className="flex items-center gap-2 mb-1">
                         <input
                           type="checkbox"
@@ -169,6 +203,21 @@ function CourseDetail() {
                           __html: DOMPurify.sanitize(lesson.content || "")
                         }}
                       />
+                      <button
+                        className="mt-2 bg-purple-600 text-white px-3 py-1 rounded-md text-sm hover:bg-purple-700"
+                        onClick={() => setOpenQuiz({ secIdx, lesIdx })}
+                      >
+                        Take Quiz
+                      </button>
+                      {openQuiz && openQuiz.secIdx === secIdx && openQuiz.lesIdx === lesIdx && (
+                        <div className="mt-4">
+                          <Quiz
+                            courseId={course._id}
+                            sectionIndex={secIdx}
+                            lessonIndex={lesIdx}
+                          />
+                        </div>
+                      )}
                     </div>
                   );
                 })}

@@ -9,6 +9,7 @@ import CourseDetail from "./pages/CourseDetail";
 import EditCourse from "./pages/EditCourse";
 import Dashboard from "./pages/Dashboard";
 import LoginSignup from "./pages/LoginSignup";
+import ExplainConcept from "./pages/ExplainConcept";
 import Navbar from "./components/Navbar";
 import ErrorBoundary from "./components/ErrorBoundary";
 import PrivateRoute from "./components/PrivateRoute";
@@ -51,6 +52,14 @@ function App() {
               element={
                 <PrivateRoute>
                   <CourseDetail />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/explain-concept"
+              element={
+                <PrivateRoute>
+                  <ExplainConcept />
                 </PrivateRoute>
               }
             />

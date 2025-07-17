@@ -13,6 +13,7 @@ function Home() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const courses = useSelector((state) => state.courses.list);
+  const [recommendedCourse, setRecommendedCourse] = useState(null);
 
   // UI State
   const [search, setSearch] = useState("");
@@ -26,6 +27,18 @@ function Home() {
   useEffect(() => {
     dispatch(fetchCourses());
   }, [dispatch]);
+
+  useEffect(() => {
+    const completedCoursesIds = JSON.parse(localStorage.getItem("completedCourses") || "[]");
+    const uncompletedCourses = courses.filter(course => !completedCoursesIds.includes(course._id));
+
+    if (uncompletedCourses.length > 0) {
+      const randomIndex = Math.floor(Math.random() * uncompletedCourses.length);
+      setRecommendedCourse(uncompletedCourses[randomIndex]);
+    } else {
+      setRecommendedCourse(null);
+    }
+  }, [courses]);
 
   // Filtering, searching, sorting
   let filtered = courses.filter((course) =>
@@ -70,6 +83,13 @@ function Home() {
   return (
     <div className="max-w-6xl mx-auto p-4">
       <h1 className="text-3xl font-bold text-center mb-6">Your Courses</h1>
+
+      {recommendedCourse && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">
+          <p className="font-bold">What Should I Learn Next?</p>
+          <p>We recommend: <Link to={`/course/${recommendedCourse._id}`} className="font-semibold underline">{recommendedCourse.title}</Link></p>
+        </div>
+      )}
 
       {/* Controls */}
       <div className="flex flex-wrap gap-2 mb-4 items-center">

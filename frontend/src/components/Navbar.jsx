@@ -58,6 +58,14 @@ function Navbar() {
               >
                 Dashboard
               </Link>
+              <Link
+                to="/explain-concept"
+                className={`text-white hover:text-blue-200 transition ${
+                  location.pathname === "/explain-concept" ? "underline" : ""
+                }`}
+              >
+                Explain Concept
+              </Link>
               {role === "admin" && (
                 <Link
                   to="/create"
