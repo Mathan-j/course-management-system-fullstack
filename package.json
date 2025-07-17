@@ -2,5 +2,11 @@
   "dependencies": {
     "dotenv": "^17.2.0",
     "openai": "^5.10.1"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\""
   }
 }
