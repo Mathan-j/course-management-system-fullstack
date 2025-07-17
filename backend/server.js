@@ -14,7 +14,7 @@ import quizRoutes from './routes/quizRoutes.js';
           ];
 
 dotenv.config();
-const app = express();
+const app = express(); // Added comment to trigger redeploy
 connectDB();
 app.use(cors({
     origin: function (origin, callback) {
