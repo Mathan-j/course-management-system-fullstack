@@ -30,7 +30,7 @@ function Home() {
 
   useEffect(() => {
     const completedCoursesIds = JSON.parse(localStorage.getItem("completedCourses") || "[]");
-    const uncompletedCourses = courses.filter(course => !completedCoursesIds.includes(course._id));
+    const uncompletedCourses = Array.from(courses || []).filter(course => !completedCoursesIds.includes(course._id));
 
     if (uncompletedCourses.length > 0) {
       const randomIndex = Math.floor(Math.random() * uncompletedCourses.length);
@@ -41,7 +41,7 @@ function Home() {
   }, [courses]);
 
   // Filtering, searching, sorting
-  let filtered = courses.filter((course) =>
+  let filtered = Array.from(courses || []).filter((course) =>
     course.title.toLowerCase().includes(search.toLowerCase())
   );
   if (category) filtered = filtered.filter((c) => c.category === category);

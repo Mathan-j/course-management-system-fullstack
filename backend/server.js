@@ -10,6 +10,7 @@ import quizRoutes from './routes/quizRoutes.js';
 
  const allowedOrigins = [
              'http://localhost:5173', // For local development
+             'http://localhost:5174', // Added for frontend development
              'https://course-frontend-app.onrender.com' 
           ];
 
